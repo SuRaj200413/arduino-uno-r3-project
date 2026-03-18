@@ -1,0 +1,102 @@
+#include <DHT.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <SoftwareSerial.h>
+
+// === Pins ===
+#define DHTPIN 2
+#define DHTTYPE DHT11
+#define ENA 5
+#define IN1 6
+#define IN2 7
+#define LEDPIN 13
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+SoftwareSerial btSerial(10, 11); // RX, TX
+
+// === States ===
+bool ledStatus = false;
+bool autoFanMode = true;
+int fanSpeed = 0;
+
+void setup() {
+  Serial.begin(9600);
+  btSerial.begin(9600);
+  dht.begin();
+  lcd.begin(16, 2);
+  lcd.setBacklight(1);
+
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(LEDPIN, OUTPUT);
+
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW); // One direction
+}
+
+void loop() {
+  float temperature = dht.readTemperature();
+  if (isnan(temperature)) {
+    lcd.clear();
+    lcd.print("Temp Error");
+    delay(1000);
+    return;
+  }
+
+  // === Auto Fan Logic ===
+  if (autoFanMode) {
+    if (temperature <= 25) fanSpeed = 100;       // Low
+    else if (temperature <= 30) fanSpeed = 170;  // Medium
+    else fanSpeed = 255;                         // High
+  }
+
+  analogWrite(ENA, fanSpeed); // Apply speed
+
+  // === Bluetooth Commands ===
+  if (btSerial.available()) {
+    char cmd = btSerial.read();
+    switch (cmd) {
+      case 'L': // Toggle LED
+        ledStatus = !ledStatus;
+        digitalWrite(LEDPIN, ledStatus ? HIGH : LOW);
+        break;
+      case 'A': // Auto Fan mode
+        autoFanMode = true;
+        break;
+      case '1': // Manual Low
+        autoFanMode = false;
+        fanSpeed = 100;
+        break;
+      case '2': // Manual Medium
+        autoFanMode = false;
+        fanSpeed = 170;
+        break;
+      case '3': // Manual High
+        autoFanMode = false;
+        fanSpeed = 255;
+        break;
+    }
+  }
+
+  // === LCD Display ===
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(temperature);
+  lcd.print(" C");
+
+  lcd.setCursor(0, 1);
+  lcd.print("LED:");
+  lcd.print(ledStatus ? "ON " : "OFF");
+
+  lcd.print(" Fan:");
+  if (fanSpeed <= 100) lcd.print("LOW ");
+  else if (fanSpeed <= 170) lcd.print("MED ");
+  else lcd.print("HIGH");
+
+  delay(1000);
+}
+
+
