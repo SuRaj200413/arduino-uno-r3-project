@@ -1,0 +1,69 @@
+// Pin configuration
+#define trigPin 9
+#define echoPin 10
+
+#define ledLow 2     // Green LED - low level
+#define ledMedium 3  // Yellow LED - medium level
+#define ledHigh 4    // Red LED - high level
+#define buzzer 5     // Buzzer
+
+void setup() {
+  // Set pin modes
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  pinMode(ledLow, OUTPUT);
+  pinMode(ledMedium, OUTPUT);
+  pinMode(ledHigh, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+
+  Serial.begin(9600);
+}
+
+void loop() {
+  long duration;
+  int distance;
+
+  // Trigger ultrasonic pulse
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  // Read the echo time
+  duration = pulseIn(echoPin, HIGH);
+
+  // Calculate distance in cm
+  distance = duration * 0.034 / 2;
+
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  // Assume tank height = 20 cm. Adjust as needed.
+  if (distance > 15) {
+    // Low water level
+    digitalWrite(ledLow, HIGH);
+    digitalWrite(ledMedium, LOW);
+    digitalWrite(ledHigh, LOW);
+    digitalWrite(buzzer, LOW);
+  } 
+  else if (distance > 7 && distance <= 15) {
+    // Medium water level
+    digitalWrite(ledLow, LOW);
+    digitalWrite(ledMedium, HIGH);
+    digitalWrite(ledHigh, LOW);
+    digitalWrite(buzzer, LOW);
+  } 
+  else if (distance <= 7) {
+    // High water level - trigger alarm
+    digitalWrite(ledLow, LOW);
+    digitalWrite(ledMedium, LOW);
+    digitalWrite(ledHigh, HIGH);
+    digitalWrite(buzzer, HIGH);
+  }
+
+  delay(1000);  // Delay for 1 second
+}
+
